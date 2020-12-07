@@ -5,14 +5,14 @@ Welcome to this github page built to document training examples for kubernetes.
 
 ### frontend-backend-example-1
 
-This is a very simple resource configuration that deploys a frontend and backend services running in the cluster. Communication between the services which uses type `NodePort` and `ClusterIP` to show the functionality and differences. We are deploying into namespace `app`. You may choose an existing one or remove namespace from metadata to deploy into default namespace.
+This is a very simple resource configuration that deploys a frontend and backend services running in the cluster. Frontend uses service type `NodePort` and `ClusterIP` for the backend. We are deploying into namespace `app`. You may choose another existing one or if you prefer, just remove namespace definition from metadata to deploy into default namespace.
 
 #### Deploy backend
 
 ```bash
 kubectl create -f backend.yaml
 ```
-frontend.yaml
+> backend.yaml
 ```markdown
 apiVersion: apps/v1
 kind: Deployment
@@ -56,7 +56,7 @@ spec:
 ```bash
 kubectl create -f frontend.yaml
 ```
-frontend.yaml
+> frontend.yaml
 ```markdown
 apiVersion: apps/v1
 kind: Deployment
@@ -155,7 +155,8 @@ data:
       }
     }
 ```
+### How this works
 
-The frontend service is exposing a physical port in the kubernetes worker nodes. If not specified this will be a random port between 30000 and 32767.
-
-You can call to the ipaddress of the worker node with the port , frontend application will receive the request and will pass it to the backend service.
+The `frontend` service by using `NodePort` is exposing a physical port in the kubernetes worker nodes. If not specified this will be a random port between `30000 and 32767`.
+Basically, we have nginx running on both deployments, but we are only exposing first service while the second one for backend is only accesible within the cluster. The configMap
+injects the nginx configuration using volumes into the frontend, and this one is acting as proxy redirecting the traffic internally to the backend service.
