@@ -9,10 +9,10 @@ This is a very simple resource configuration that deploys a frontend and backend
 
 #### Deploy backend
 
-```bash
+```markdown
 kubectl create -f backend.yaml
 ```
-> backend.yaml
+backend.yaml
 ```markdown
 apiVersion: apps/v1
 kind: Deployment
@@ -53,10 +53,10 @@ spec:
 
 #### Deploy Frontend
 
-```bash
+```markdown
 kubectl create -f frontend.yaml
 ```
-> frontend.yaml
+frontend.yaml
 ```markdown
 apiVersion: apps/v1
 kind: Deployment
@@ -155,6 +155,7 @@ data:
       }
     }
 ```
+
 ### How this works
 
 The `frontend` service by using `NodePort` is exposing a physical port in the kubernetes worker nodes. If not specified this will be a random port between `30000 and 32767`.
