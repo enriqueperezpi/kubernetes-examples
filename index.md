@@ -1,37 +1,161 @@
-## Welcome to GitHub Pages
+## Kubernetes training
 
-You can use the [editor on GitHub](https://github.com/enriqueperezpi/kubernetes-examples/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+Welcome to this github page built to document training examples for kubernetes.
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
 
-### Markdown
+### frontend-backend-example-1
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+This is a very simple resource configuration that deploys a frontend and backend services running in the cluster. Communication between the services which uses type `NodePort` and `ClusterIP` to show the functionality and differences. We are deploying into namespace `app`. You may choose an existing one or remove namespace from metadata to deploy into default namespace.
 
+#### Deploy backend
+
+```bash
+kubectl create -f backend.yaml
+```
+frontend.yaml
 ```markdown
-Syntax highlighted code block
-
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: apps
+  name: backend
+  labels:
+    app: backend-app
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: backend-app
+  template:
+    metadata:
+      labels:
+        app: backend-app
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: apps
+  name: backend
+spec:
+  selector:
+    app: backend-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
 ```
 
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
+#### Deploy Frontend
 
-### Jekyll Themes
+```bash
+kubectl create -f frontend.yaml
+```
+frontend.yaml
+```markdown
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: apps
+  name: frontend
+  labels:
+    app: frontend-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend-app
+  template:
+    metadata:
+      labels:
+        app: frontend-app
+    spec:
+      containers:
+      - name: frontend
+        image: nginx:1.14.2
+        volumeMounts:
+        - mountPath: /etc/nginx # mount nginx-conf volumn to /etc/nginx
+          readOnly: true
+          name: nginx-conf
+      volumes:
+      - name: nginx-conf
+        configMap:
+          name: frontend-nginx-conf # place ConfigMap `nginx-conf` on /etc/nginx
+          items:
+            - key: nginx.conf
+              path: nginx.conf
+            - key: virtualhost.conf
+              path: conf.d/virtualhost.conf # dig directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: apps
+  name: frontend
+spec:
+  type: NodePort
+  selector:
+    app: frontend-app
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 80
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: apps
+  name: frontend-nginx-conf
+data:
+  nginx.conf: |
+    user  nginx;
+    worker_processes  1;
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/enriqueperezpi/kubernetes-examples/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
+    error_log  /var/log/nginx/error.log warn;
+    pid        /var/run/nginx.pid;
 
-### Support or Contact
 
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+    events {
+        worker_connections  1024;
+    }
+
+
+    http {
+        #include /etc/nginx/mime.types;
+        default_type  application/octet-stream;
+
+        log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                          '$status $body_bytes_sent "$http_referer" '
+                          '"$http_user_agent" "$http_x_forwarded_for"';
+
+        access_log  /var/log/nginx/access.log  main;
+        sendfile        on;
+        keepalive_timeout  65;
+        include /etc/nginx/conf.d/virtualhost.conf;
+    }
+
+  virtualhost.conf: |
+    upstream app {
+      server backend:80;
+      keepalive 1024;
+    }
+    server {
+      listen 80 default_server;
+      root /usr/local/app;
+      access_log /var/log/nginx/app.access_log main;
+      error_log /var/log/nginx/app.error_log;
+      location / {
+        proxy_pass http://backend;
+        proxy_http_version 1.1;
+      }
+    }
+```
+
+The frontend service is exposing a physical port in the kubernetes worker nodes. If not specified this will be a random port between 30000 and 32767.
+
+You can call to the ipaddress of the worker node with the port , frontend application will receive the request and will pass it to the backend service.
