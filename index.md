@@ -322,3 +322,50 @@ spec:
 ### How this works
 
 The `frontend` service by using `NodePort` is exposing a physical port in the kubernetes worker nodes, same as example 1. If not specified this will be a random port between `30000 and 32767`. We have manually chosen a fixed one. If we had a cloud-provider cluster with kubernetes service compatibility we would have gone for instance for the `LoadBalancer` service type, then cloud provider automatically provides a free IP resource for the service exposing outside of the cluster the service.
+
+***
+
+## wordpress-complete-example
+
+This may be considered an extension on the previous example '2' . In here we are deploying the blog and database to be ready for a fresh configuration, but with the main concept of using and ingress controller. This way we are exposing the blog service outside of the cluster with an ingress resource. For our example, we publish `localhost` and a dns `wordpress.foo.bar.com` with same result. Notice in here we are not using NodePort, but the nginx-controller is using 2 services, ClusterIP and LoadBalancer to handle the ingress requests. There are quite a few ingress controllers though you can find over internet, we will be using [nginx-ingress](https://kubernetes.github.io/ingress-nginx/).
+
+
+####1. Create a host record
+
+For the example of the dns `wordpress.foo.bar.com`, we will be required to create a host entry locally to point to the IP address of the machine:
+- Linux: ```/etc/hosts ```
+- Windows: ```C:/System32/drivers/etc/hosts```
+- Mac: ```/private/etc/hosts```
+
+```bash
+# DNS record to point to our cluster
+{local_ip_address} wordpress.foo.bar.com
+```
+
+####2. Create our custom Namespace
+```bash
+kubectl apply -f wordpress-complete-example/namespace.yaml
+```
+
+####3. Deploy the nginx-ingress controller
+
+We are using the default resources for the application which are deployed in an isolated namespace
+```bash
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.43.0/deploy/static/provider/cloud/deploy.yaml
+```
+
+####4. Deploy the backend database
+```bash
+kubectl apply -f wordpress-complete-example/app/backend-mariadb-deploy.yaml
+```
+
+####5. Deploy the frontend blog
+```bash
+kubectl apply -f wordpress-complete-example/app/frontend-wordpress-deploy.yaml
+```
+
+####6. Access to the blog
+
+Now you can access to the blog by using one of the ingress hosts examples and set the blog up:
+- example 1: http://localhost
+- example 2: http://wordpress.foo.bar.com
